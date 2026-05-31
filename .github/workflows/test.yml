@@ -1,0 +1,91 @@
+name: Automation Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    - cron: '0 2 * * *'
+
+jobs:
+  selenium-tests:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        python-version: ['3.10']
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: Run Selenium tests
+      run: |
+        cd framework/selenium_pytest
+        pytest tests/ -v --tb=short --html=report.html --self-contained-html
+    
+    - name: Upload Selenium Report
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: selenium-report
+        path: framework/selenium_pytest/report.html
+
+  playwright-tests:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+    
+    - name: Install dependencies
+      run: |
+        cd framework/playwright
+        npm install
+        npx playwright install
+    
+    - name: Run Playwright tests
+      run: |
+        cd framework/playwright
+        npx playwright test
+    
+    - name: Upload Playwright Report
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: playwright-report
+        path: framework/playwright/playwright-report/
+
+  api-tests:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: Run API tests
+      run: |
+        pytest api_tests/ -v --tb=short
